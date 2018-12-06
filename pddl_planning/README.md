@@ -18,7 +18,7 @@ Most of this code was written by [Caelan Garrett](https://github.com/caelan).
 - `utils.py` contains general-purpose Drake Python utilities.
 - `poses.txt` contains text representation of `Isometry3` poses of objects on the table found by DOPE.
 - `test_pddl_planning.py` is a script to test basic functionality of this module for continuous integration.
-- The `models/` is a git submodule containing useful `.sdf` model files, including those of the YCB Objects recognized by DOPE.
+- The `models/` directory is a git submodule containing useful `.sdf` model files, including those of the YCB Objects recognized by DOPE.
 
 ## Using This Module
 `run.py` takes in a few command line arguments to run through the complete task and motion planning problem.
