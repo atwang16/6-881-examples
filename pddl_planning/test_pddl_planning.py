@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import os
+import meshcat
 
 from pddl_planning.problems import load_dope
 from pddl_planning.simulation import compute_duration, convert_controls, step_trajectories, simulate_splines, dump_plans, ForceControl
@@ -14,6 +15,8 @@ class TestPDDLPlanning(unittest.TestCase):
 
         self.prevdir = os.getcwd()
         os.chdir(os.path.expanduser("pddl_planning"))
+
+        vis = meshcat.Visualizer()
 
         task, diagram, state_machine = load_dope(time_step=self.time_step,
                                                  dope_path="poses.txt",
