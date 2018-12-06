@@ -136,7 +136,7 @@ class ManipulationStationSimulator:
         if is_visualizing:
             viz.load()
             time.sleep(2.0)
-            # RenderSystemWithGraphviz(diagram)
+            RenderSystemWithGraphviz(diagram)
 
         # construct simulator
         simulator = Simulator(diagram)

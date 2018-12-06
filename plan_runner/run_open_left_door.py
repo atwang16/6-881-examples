@@ -9,6 +9,7 @@ from plan_runner.open_left_door import (GenerateOpenLeftDoorPlansByTrajectory,
                                         GenerateOpenLeftDoorPlansByImpedanceOrPosition,)
 
 if __name__ == '__main__':
+    # python run_open_left_door.py --controller=Position --left_door_angle_actual 0.2 --left_door_angle_guess 0.2 --open_fully
     # define command line arguments
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -24,13 +25,30 @@ if __name__ == '__main__':
         help="Specify the controller used to open the door. Its value should be: "
              "'Trajectory' (default), 'Impedance' or 'Position.")
     parser.add_argument(
-        "--no_visualization", action="store_true", default=False,
-        help="Turns off visualization")
+        "--left_door_angle_actual",
+        type=float,
+        help="Angle of left door, from 0 to pi/2",
+        default=0.001)
     parser.add_argument(
-        "--diagram_plan_runner", action="store_true", default=False,
-        help="Use the diagram version of plan_runner")
+        "--right_door_angle_actual",
+        type=float,
+        help="Angle of right door, from 0 to pi/2",
+        default=0.001)
+    parser.add_argument(
+        "--left_door_angle_guess",
+        type=float,
+        help="Angle of left door, from 0 to pi/2",
+        default=0.0)
     args = parser.parse_args()
     is_hardware = args.hardware
+
+    left_door_angle = -args.left_door_angle_guess
+    rotation_matrix = np.array([[np.cos(left_door_angle), -np.sin(left_door_angle), 0], [np.sin(left_door_angle), np.cos(left_door_angle), 0], [0, 0, 1]])
+    p_handle_2_hinge_new = np.dot(rotation_matrix, p_handle_2_hinge)
+    p_LC_handle_new = p_handle_2_hinge_new + p_LC_left_hinge
+    p_WC_handle_new = p_WL + p_LC_handle_new
+    theta0_hinge_new = np.arctan2(np.abs(p_handle_2_hinge_new[0]),
+                              np.abs(p_handle_2_hinge_new[1]))  # = theta0_hinge - left_door_angle
 
     # Construct simulator system.
     object_file_path = FindResourceOrThrow(
@@ -48,22 +66,19 @@ if __name__ == '__main__':
         plan_list, gripper_setpoint_list = GenerateOpenLeftDoorPlansByTrajectory()
     elif args.controller == "Impedance" or args.controller == "Position":
         plan_list, gripper_setpoint_list = GenerateOpenLeftDoorPlansByImpedanceOrPosition(
-            open_door_method=args.controller, is_open_fully=args.open_fully)
+            open_door_method=args.controller, is_open_fully=args.open_fully, handle_angle_start=theta0_hinge_new, handle_position=p_WC_handle_new)
 
     # Run simulator (simulation or hardware).
     if is_hardware:
         iiwa_position_command_log, iiwa_position_measured_log, iiwa_external_torque_log = \
-            manip_station_sim.RunRealRobot(
-                plan_list, gripper_setpoint_list,
-                is_plan_runner_diagram=args.diagram_plan_runner)
+            manip_station_sim.RunRealRobot(plan_list, gripper_setpoint_list)
         PlotExternalTorqueLog(iiwa_external_torque_log)
         PlotIiwaPositionLog(iiwa_position_command_log, iiwa_position_measured_log)
     else:
         q0 = [0, 0, 0, -1.75, 0, 1.0, 0]
         iiwa_position_command_log, iiwa_position_measured_log, iiwa_external_torque_log, \
             state_log = manip_station_sim.RunSimulation(
-                plan_list, gripper_setpoint_list, extra_time=2.0, real_time_rate=0.0, q0_kuka=q0,
-                is_visualizing=not args.no_visualization,
-                is_plan_runner_diagram=args.diagram_plan_runner)
+                plan_list, gripper_setpoint_list, extra_time=2.0, real_time_rate=1.0, q0_kuka=q0,
+                left_door_angle=args.left_door_angle_actual, right_door_angle=args.right_door_angle_actual)
         PlotExternalTorqueLog(iiwa_external_torque_log)
         PlotIiwaPositionLog(iiwa_position_command_log, iiwa_position_measured_log)

@@ -20,7 +20,7 @@ p_WC_handle = p_WL + p_LC_handle
 p_handle_2_hinge = p_LC_handle - p_LC_left_hinge
 r_handle = np.linalg.norm(p_handle_2_hinge)
 
-# angle between the world y axis and the line connecting the hinge cneter to the
+# angle between the world y axis and the line connecting the hinge center to the
 # handle center when the left door is fully closed (left_hinge_angle = 0).
 theta0_hinge = np.arctan2(np.abs(p_handle_2_hinge[0]),
                           np.abs(p_handle_2_hinge[1]))
@@ -32,8 +32,8 @@ p_EQ = GetEndEffectorWorldAlignedFrame().multiply(np.array([0., 0., 0.090]))
 R_WEa_ref = RollPitchYaw(0, np.pi / 180 * 135, 0).ToRotationMatrix()
 
 q_home = np.array([0, -0.2136, 0, -2.094, 0, 0.463, 0])
-q_pre_swing = np.array([2.44, 16.72, -17.43, -89.56, 47.30, 63.53, -83.77])*np.pi/180
-q_post_swing = np.array([20.0, 16.72, -17.43, -89.56, 47.30, 63.53, -83.77])*np.pi/180
+q_pre_swing = np.array([1.44, 22.72, -17.43, -89.56, 47.30, 63.53, -83.77])*np.pi/180
+q_post_swing = np.array([20.0, 22.72, -17.43, -89.56, 47.30, 63.53, -83.77])*np.pi/180
 
 
 
