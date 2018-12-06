@@ -86,7 +86,7 @@ class TestPDDLPlanning(unittest.TestCase):
         iiwa_position_command_log, iiwa_position_measured_log, iiwa_external_torque_log, \
             plant_state_log = \
             self.manip_station_sim.RunSimulation(plan_list, gripper_setpoints,
-                                            extra_time=2.0, real_time_rate=1.0,
+                                            extra_time=2.0, real_time_rate=5.0,
                                             q0_kuka=self.q0, is_visualizing=False)
 
         # Run Tests
