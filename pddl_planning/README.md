@@ -19,6 +19,7 @@ Most of this code was written by [Caelan Garrett](https://github.com/caelan).
 - `poses.txt` contains text representation of `Isometry3` poses of objects on the table found by DOPE.
 - `test_pddl_planning.py` is a script to test basic functionality of this module for continuous integration.
 - The `models/` directory is a git submodule containing useful `.sdf` model files, including those of the YCB Objects recognized by DOPE.
+- Execute `6-881-examples$ git submodule update --recursive --init` to update the `models/` directory
 
 ## Using This Module
 `run.py` takes in a few command line arguments to run through the complete task and motion planning problem.
@@ -36,23 +37,23 @@ Make sure to start a meschat server in a separate terminator window or in the ba
 Generate a new trajectory using force control and simulate it:
 
 ```sh
-$ python run.py -f -s
+6-881-examples$ python -m pddl_planning.run.py -f -s
 ```
 
 Simulate the system using the last plan:
 
 ```sh
-$ python run.py -l -s
+6-881-examples$ python -m pddl_planning.run.py -l -s
 ```
 
 Generate a new plan ignoring collisions:
 
 ```sh
-$ python run.py -c
+6-881-examples$ python -m pddl_planning.run.py -c
 ```
 
 Generate a new plan and run it on the real robot:
 
 ```sh
-$ python run.py -e
+6-881-examples$ python -m pddl_planning.run.py -e
 ```

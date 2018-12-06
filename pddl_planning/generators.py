@@ -3,18 +3,14 @@ from __future__ import print_function
 from itertools import product, cycle
 
 import numpy as np
-import time
 
 from pddl_planning.iiwa_utils import open_wsg50_gripper, get_box_grasps, get_cylinder_grasps, \
     get_close_wsg50_positions, get_open_wsg50_positions, get_door_positions, DOOR_CLOSED, DOOR_OPEN
-from pddl_planning.motion import plan_joint_motion, plan_waypoints_joint_motion, get_difference_fn, get_sample_fn, \
+from pddl_planning.motion import plan_joint_motion, plan_waypoints_joint_motion, get_difference_fn, \
     get_extend_fn, interpolate_translation, plan_workspace_motion, get_collision_fn, get_distance_fn
 from pddl_planning.utils import get_relative_transform, set_world_pose, set_joint_position, get_body_pose, \
     get_base_body, sample_aabb_placement, get_movable_joints, get_model_name, set_joint_positions, get_box_from_geom, \
-    exists_colliding_pair, get_model_bodies, aabb_contains_point, bodies_from_models, \
-    get_model_aabb, get_joint_limits, get_world_pose, get_joint_positions, get_state
-
-from pydrake.trajectories import PiecewisePolynomial
+    exists_colliding_pair, get_model_bodies, bodies_from_models, get_world_pose, get_state
 
 RADIANS_PER_SECOND = np.pi / 32
 
@@ -181,7 +177,6 @@ def plan_frame_motion(plant, joints, frame, frame_path,
 def get_ik_gen_fn(task, context, collisions=True, max_failures=10, step_size=0.05):
     approach_vector = 0.15 * np.array([0, -1, 0])
     world_vector = 0.05 * np.array([0, 0, +1])
-    world_from_robot = get_world_pose(task.mbp, context, task.robot)
     gripper_frame = get_base_body(task.mbp, task.gripper).body_frame()
     door_bodies = {task.mbp.tree().get_body(door_index) for door_index in task.doors}
     fixed = (task.fixed_bodies() | door_bodies) if collisions else []
@@ -219,7 +214,6 @@ def get_ik_gen_fn(task, context, collisions=True, max_failures=10, step_size=0.0
                 continue
             traj = Trajectory([Conf(joints, q) for q in path], attachments=[obj_grasp])
             conf = traj.path[-1]
-            print('Attempts:', attempts)
             yield (conf, traj)
             last_success = attempts
     return fn
@@ -237,7 +231,6 @@ def get_reachable_grasp_gen_fn(task, context, collisions=True, max_failures=50, 
                 break
             try:
                 (q, t) = next(ik_gen_fn(r, o, p, g))
-                print('Grasp failures:', failures)
                 yield (g, q, t)
                 failures = 0
             except StopIteration:
@@ -255,7 +248,6 @@ def get_reachable_pose_gen_fn(task, context, collisions=True, max_failures=100, 
                 break
             try:
                 (q, t) = next(ik_gen_fn(r, o, p, g))
-                print('Pose failures:', failures)
                 yield (p, q, t)
                 failures = 0
             except StopIteration:
@@ -343,7 +335,6 @@ def get_pull_fn(task, context, collisions=True, max_attempts=25, step_size=np.pi
 
 def get_force_pull_fn(task, context, collisions=True):
     home_conf = np.array([0, -0.2136, 0, -2.094, 0, 0.463, 0])
-    fixed = task.fixed_bodies() if collisions else []
 
     def fn(robot_name, door_name, door_conf1, door_conf2):
         robot = task.mbp.GetModelInstanceByName(robot_name)
@@ -417,7 +408,6 @@ def get_motion_fn(task, context, collisions=True, teleport=False):
         sample_fn = None
 
         open_wsg50_gripper(task.mbp, context, gripper)
-        t0 = time.time()
         path = plan_joint_motion(joints, conf1.positions, conf2.positions,
                                  sample_fn=sample_fn, collision_fn=collision_fn,
                                  restarts=10, iterations=75, smooth=50)

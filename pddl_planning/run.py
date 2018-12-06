@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 from __future__ import print_function
 
 import argparse
@@ -8,14 +6,13 @@ import numpy as np
 import cProfile
 import pstats
 
-from pddl_planning.generators import Pose, Conf, get_grasp_gen_fn, get_ik_gen_fn, get_reachable_grasp_gen_fn, \
+from pddl_planning.generators import Pose, Conf, get_ik_gen_fn, get_reachable_grasp_gen_fn, \
     get_reachable_pose_gen_fn, get_motion_fn, get_pull_fn, get_collision_test, \
     get_open_trajectory, Trajectory, get_force_pull_fn
 from iiwa_utils import get_door_positions, DOOR_OPEN
-from pddl_planning.simulation import compute_duration, convert_controls, step_trajectories, simulate_splines, dump_plans, ForceControl
-from pddl_planning.problems import load_station, load_dope
+from pddl_planning.simulation import compute_duration, convert_controls, step_trajectories, dump_plans, ForceControl
+from pddl_planning.problems import load_station, load_dope, DOPE_PATH, get_sdf_path
 from pddl_planning.systems import RenderSystemWithGraphviz
-from pddl_planning.motion import test_roadmap
 from pddl_planning.utils import get_world_pose, get_configuration, get_model_name, get_joint_positions, get_parent_joints, \
     get_state, set_state, get_movable_joints
 
@@ -26,7 +23,6 @@ from pddlstream.language.generator import from_gen_fn, from_fn
 from pddlstream.utils import print_solution, read, INF, get_file_path
 
 from plan_runner.manipulation_station_simulator import ManipulationStationSimulator
-from plan_runner.open_left_door_plans import OpenLeftDoorImpedancePlan, theta0_hinge
 from plan_runner.open_left_door import GenerateOpenLeftDoorPlansByImpedanceOrPosition
 
 def get_pddlstream_problem(task, context, collisions=True, use_impedance=False):
@@ -104,7 +100,6 @@ def get_pddlstream_problem(task, context, collisions=True, use_impedance=False):
     print('Goal:', goal)
 
     stream_map = {
-        'sample-grasp': from_gen_fn(get_grasp_gen_fn(task)),
         'sample-reachable-grasp': from_gen_fn(get_reachable_grasp_gen_fn(task, context, collisions=collisions)),
         'sample-reachable-pose': from_gen_fn(get_reachable_pose_gen_fn(task, context, collisions=collisions)),
         'plan-ik': from_gen_fn(get_ik_gen_fn(task, context, collisions=collisions)),
@@ -116,7 +111,6 @@ def get_pddlstream_problem(task, context, collisions=True, use_impedance=False):
         stream_map['plan-pull'] = from_gen_fn(get_force_pull_fn(task, context, collisions=collisions))
     else:
         stream_map['plan-pull'] = from_gen_fn(get_pull_fn(task, context, collisions=collisions))
-
     #stream_map = 'debug' # Runs PDDLStream with "placeholder streams" for debugging
 
     return PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
@@ -203,15 +197,19 @@ def main():
                         help='Loads the last plan')
     parser.add_argument('-f', '--force_control', action='store_true',
                         help='Use impedance control to open the door')
+    parser.add_argument('-p', '--poses', default=DOPE_PATH,
+                        help='The path to the dope poses file')
     args = parser.parse_args()
 
     if args.deterministic:
         random.seed(0)
         np.random.seed(0)
 
-    task, diagram, state_machine = load_dope(time_step=time_step,
-                                             dope_path='poses.txt',
-                                             goal_name='soup')
+    goal_name = 'soup'
+    if args.poses == 'none':
+        task, diagram, state_machine = load_station(time_step=time_step)
+    else:
+        task, diagram, state_machine = load_dope(time_step=time_step, dope_path=args.poses, goal_name=goal_name)
     print(task)
 
     plant = task.mbp
@@ -226,7 +224,7 @@ def main():
         context, frame_A=world_frame, frame_B=plant.GetFrameByName("base_link_soup"))
 
     if not args.load:
-        replan(task, context, visualize=True, collisions=not args.cfree, use_impedance=args.force)
+        replan(task, context, visualize=True, collisions=not args.cfree, use_impedance=args.force_control)
 
     ##################################################
 
@@ -235,7 +233,7 @@ def main():
 
     manip_station_sim = ManipulationStationSimulator(
         time_step=time_step,
-        object_file_path='./models/ycb_objects/soup_can.sdf',
+        object_file_path=get_sdf_path(goal_name),
         object_base_link_name="base_link_soup",
         X_WObject=X_WSoup)
 

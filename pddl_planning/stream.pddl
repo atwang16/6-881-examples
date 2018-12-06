@@ -1,12 +1,5 @@
 (define (stream manipulation-station)
 
-  (:stream sample-grasp
-    :inputs (?obj)
-    :domain (Graspable ?obj)
-    :outputs (?grasp)
-    :certified (Grasp ?obj ?grasp)
-  )
-
   (:stream sample-reachable-grasp
     :inputs (?r ?o ?p)
     :domain (and (Robot ?r) (InitPose ?o ?p))
@@ -22,14 +15,6 @@
     :certified (and (Pose ?o ?p) (Supported ?o ?p ?s) (Conf ?r ?q) (Traj ?t)
                     (Kin ?r ?o ?p ?g ?q ?t))
   )
-
-  ;(:stream plan-ik
-  ;  :inputs (?robot ?obj ?pose ?grasp)
-  ;  :domain (and (Robot ?robot) (Grasp ?obj ?grasp) (Pose ?obj ?pose))
-  ;  :outputs (?conf ?traj)
-  ;  :certified (and (Conf ?robot ?conf) (Traj ?traj)
-  ;                  (Kin ?robot ?obj ?pose ?grasp ?conf ?traj))
-  ;)
 
   (:stream plan-pull
     :inputs (?robot ?door ?door_conf1 ?door_conf2)

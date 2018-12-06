@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import time
 import numpy as np
-from pydrake.systems.analysis import Simulator
 from pydrake.trajectories import PiecewisePolynomial
 
 from pddl_planning.utils import get_configuration, user_input
@@ -117,17 +116,3 @@ def compute_duration(plan_list, multiplier=1.1, extra_time=5.0):
         sim_duration += plan.get_duration() * multiplier
     sim_duration += extra_time
     return sim_duration
-
-##################################################
-
-
-def simulate_splines(diagram, diagram_context, sim_duration, real_time_rate=1.0):
-    user_input('Simulate?')
-    simulator = Simulator(diagram, diagram_context)
-    simulator.set_publish_every_time_step(False)
-    simulator.set_target_realtime_rate(real_time_rate)
-
-    diagram.Publish(diagram_context)
-    simulator.Initialize()
-    simulator.StepTo(sim_duration)
-    user_input('Finish?')

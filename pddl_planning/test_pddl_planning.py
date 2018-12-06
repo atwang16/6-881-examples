@@ -4,7 +4,7 @@ import os
 import meshcat
 
 from pddl_planning.problems import load_dope
-from pddl_planning.simulation import compute_duration, convert_controls, step_trajectories, simulate_splines, dump_plans, ForceControl
+from pddl_planning.simulation import compute_duration, ForceControl
 from plan_runner.manipulation_station_simulator import ManipulationStationSimulator
 from plan_runner.open_left_door import GenerateOpenLeftDoorPlansByImpedanceOrPosition
 
