@@ -18,6 +18,7 @@ Most of this code was written by [Caelan Garrett](https://github.com/caelan).
 - `utils.py` contains general-purpose Drake Python utilities.
 - `poses.txt` contains text representation of `Isometry3` poses of objects on the table found by DOPE.
 - `test_pddl_planning.py` is a script to test basic functionality of this module for continuous integration.
+- The `models/` is a git submodule containing useful `.sdf` model files, including those of the YCB Objects recognized by DOPE.
 
 ## Using This Module
 `run.py` takes in a few command line arguments to run through the complete task and motion planning problem.
@@ -54,10 +55,4 @@ Generate a new plan and run it on the real robot:
 
 ```sh
 $ python run.py -e
-```
-
-To run the example of getting the pose of the foam brick, execute `run_perception_system.py` with a camera configuration file. For example:
-
-```sh
-$ python run_perception_system.py --config_file=config/sim.yml
 ```
