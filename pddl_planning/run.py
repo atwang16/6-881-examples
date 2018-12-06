@@ -201,7 +201,7 @@ def main():
                         help='Executes the system')
     parser.add_argument('-l', '--load', action='store_true',
                         help='Loads the last plan')
-    parser.add_argument('-f', '--force', action='store_true',
+    parser.add_argument('-f', '--force_control', action='store_true',
                         help='Use impedance control to open the door')
     args = parser.parse_args()
 
