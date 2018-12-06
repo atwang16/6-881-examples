@@ -25,7 +25,7 @@ p_WL = np.array([0.7477, 0.1445, 0.4148]) #+ [-0.1, 0, 0]
 p_LC_left_hinge = np.array([0.008, 0.1395, 0])
 p_WC_left_hinge = p_WL + p_LC_left_hinge
 
-def SegmentDoor(scene_points, scene_colors, center=False):
+def SegmentDoorRealWorld(scene_points, scene_colors, center=False):
     """Removes all points that aren't a part of the foam brick.
 
     @param scene_points An Nx3 numpy array representing a scene.
@@ -147,7 +147,7 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
 
     # create the PointCloudToPoseSystem
     pc_to_pose = builder.AddSystem(PointCloudToPoseSystem(
-        config_file, viz, SegmentDoor, ComputeDoorPose))
+        config_file, viz, SegmentDoorRealWorld, ComputeDoorPose))
 
     # realsense serial numbers are >> 100
     use_hardware = int(pc_to_pose.camera_configs["left_camera_serial"]) > 100
