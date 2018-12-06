@@ -17,9 +17,15 @@ from perception_tools.optimization_based_point_cloud_registration import (
 from perception_tools.visualization_utils import ThresholdArray
 from point_cloud_to_pose_system import PointCloudToPoseSystem
 from sklearn.linear_model import LinearRegression
+from sklearn.cluster import KMeans
 
+# L: frame the cupboard left door, whose origin is at the center of the door body.
+p_WL = np.array([0.7477, 0.1445, 0.4148]) #+ [-0.1, 0, 0]
+# center of the left hinge of the door in frame L and W
+p_LC_left_hinge = np.array([0.008, 0.1395, 0])
+p_WC_left_hinge = p_WL + p_LC_left_hinge
 
-def SegmentDoor(scene_points, scene_colors, center=False):
+def SegmentDoorRealWorld(scene_points, scene_colors, center=False):
     """Removes all points that aren't a part of the foam brick.
 
     @param scene_points An Nx3 numpy array representing a scene.
@@ -31,14 +37,14 @@ def SegmentDoor(scene_points, scene_colors, center=False):
     """
 
     x_min = 0.4
-    x_max = 0.75
+    x_max = 0.8
 
-    y_min = -5.0
+    y_min = -0.5
     y_center = 0.0
-    y_max = 5.0
+    y_max = 0.5
 
-    z_min = 0.0
-    z_max = 1.0
+    z_min = 0.1
+    z_max = 0.9
 
     x_indices = ThresholdArray(scene_points[:, 0], x_min, x_max)
     left_y_indices = ThresholdArray(scene_points[:, 1], y_center, y_max)
@@ -52,14 +58,14 @@ def SegmentDoor(scene_points, scene_colors, center=False):
     left_table_colors = scene_colors[left_indices, :]
 
     # get only red points of door
-    r_min = 0.25
+    r_min = 0.4
     r_max = 1
 
-    g_min = -1
-    g_max = 0.25
+    g_min = 0.4
+    g_max = 1
 
-    b_min = -1
-    b_max = 0.25
+    b_min = 0.4
+    b_max = 1
 
     r_indices = ThresholdArray(left_table_colors[:, 0], r_min, r_max)
     g_indices = ThresholdArray(left_table_colors[:, 1], g_min, g_max)
@@ -77,7 +83,15 @@ def SegmentDoor(scene_points, scene_colors, center=False):
         left_door_points[:, 0] -= x_mean
         left_door_points[:, 1] -= y_mean
 
-    return left_door_points, left_door_colors
+    kmeans = KMeans(n_clusters=2, random_state=0).fit(left_door_points)
+    y_kmeans = kmeans.predict(left_door_points)
+    centers = kmeans.cluster_centers_
+    distances = np.linalg.norm(centers - p_WC_left_hinge, axis=-1)
+    closest_cluster = distances.argmin()
+    indices = np.where(y_kmeans == closest_cluster)
+
+    return left_door_points[indices[0], :], left_door_colors[indices[0], :]
+    # return left_door_points, left_door_colors
 
 
 def ComputeDoorPose(door_points, door_colors):
@@ -128,12 +142,12 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
     @param viz bool. If True, save point clouds to numpy arrays.
 
     @return An Isometry3 representing the pose of the door.
-    """  
+    """
     builder = DiagramBuilder()
 
     # create the PointCloudToPoseSystem
     pc_to_pose = builder.AddSystem(PointCloudToPoseSystem(
-        config_file, viz, SegmentDoor, ComputeDoorPose))
+        config_file, viz, SegmentDoorRealWorld, ComputeDoorPose))
 
     # realsense serial numbers are >> 100
     use_hardware = int(pc_to_pose.camera_configs["left_camera_serial"]) > 100
@@ -157,7 +171,7 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
                     station.get_mutable_scene_graph() )
         station.Finalize()
 
-    # add systems to convert the depth images from ManipulationStation to 
+    # add systems to convert the depth images from ManipulationStation to
     # PointClouds
     left_camera_info = pc_to_pose.camera_configs["left_camera_info"]
     middle_camera_info = pc_to_pose.camera_configs["middle_camera_info"]
