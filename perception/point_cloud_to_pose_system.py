@@ -11,7 +11,7 @@ import meshcat.transformations as tf
 class PointCloudToPoseSystem(LeafSystem):
 
     def __init__(self, config_file, viz=False, segment_scene_function=None,
-                 get_pose_function=None):
+                 get_pose_function=None, name="generic"):
         """
         A system that takes in 3 Drake PointClouds and ImageRgba8U from
         RGBDCameras and determines the pose of an object in them. The user must
@@ -67,6 +67,8 @@ class PointCloudToPoseSystem(LeafSystem):
         self._LoadConfigFile(config_file)
 
         self.viz = viz
+
+        self.name = name
 
     def _LoadConfigFile(self, config_file):
         with open(config_file, 'r') as stream:
@@ -153,12 +155,12 @@ class PointCloudToPoseSystem(LeafSystem):
             right_colors = self._ConstructPointCloudColors(right_rgb_image)
 
             if self.viz:
-                np.save("saved_point_clouds/left_points", left_points.T)
-                np.save("saved_point_clouds/left_colors", left_colors.T)
-                np.save("saved_point_clouds/middle_points", middle_points.T)
-                np.save("saved_point_clouds/middle_colors", middle_colors.T)
-                np.save("saved_point_clouds/right_points", right_points.T)
-                np.save("saved_point_clouds/right_colors", right_colors.T)
+                np.save("saved_point_clouds/left_points_" + self.name, left_points.T)
+                np.save("saved_point_clouds/left_colors_" + self.name, left_colors.T)
+                np.save("saved_point_clouds/middle_points_" + self.name, middle_points.T)
+                np.save("saved_point_clouds/middle_colors_" + self.name, middle_colors.T)
+                np.save("saved_point_clouds/right_points_" + self.name, right_points.T)
+                np.save("saved_point_clouds/right_colors_" + self.name, right_colors.T)
 
             return self._AlignPointClouds(left_points,
                                           left_colors,
@@ -254,11 +256,11 @@ class PointCloudToPoseSystem(LeafSystem):
             self.SegmentScene(scene_points, scene_colors)
 
         if self.viz:
-            np.save("saved_point_clouds/aligned_scene_points", scene_points)
-            np.save("saved_point_clouds/aligned_scene_colors", scene_colors)
-            np.save("saved_point_clouds/segmented_scene_points",
+            np.save("saved_point_clouds/aligned_scene_points_" + self.name, scene_points)
+            np.save("saved_point_clouds/aligned_scene_colors_" + self.name, scene_colors)
+            np.save("saved_point_clouds/segmented_scene_points_" + self.name,
                     segmented_scene_points)
-            np.save("saved_point_clouds/segmented_scene_colors",
+            np.save("saved_point_clouds/segmented_scene_colors_" + self.name,
                     segmented_scene_colors)
 
         X_WObject = self.GetPose(segmented_scene_points, segmented_scene_colors)
