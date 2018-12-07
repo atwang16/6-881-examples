@@ -239,8 +239,35 @@ def ComputeDoorPose(door_points, door_colors, model_path):
     #
     # return np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
 
+# def build_station(builder, )
 
-def build_system(builder, config_file, viz):
+def build_full_system(config_file, viz, build_station_real_world, build_station_simulation):
+    builder = DiagramBuilder()
+    output = add_camera_system(builder, config_file, viz, build_station_real_world, build_station_simulation)
+    system = builder.Build()
+    system.set_name("Camera System")
+    return [system, output[1]]  # system, station
+
+def build_station_real_world(builder, camera_ids):
+    station = builder.AddSystem(
+        ManipulationStationHardwareInterface(camera_ids))
+    station.Connect()
+    return station
+
+
+def build_station_simulation(builder):
+    station = builder.AddSystem(ManipulationStation())
+    station.AddCupboard()
+    object_file_path = \
+        "drake/examples/manipulation_station/models/061_foam_brick.sdf"
+    brick = AddModelFromSdfFile(
+        FindResourceOrThrow(object_file_path),
+        station.get_mutable_multibody_plant(),
+        station.get_mutable_scene_graph())
+    station.Finalize()
+    return station, brick
+
+def add_camera_system(builder, config_file, viz, build_station_real_world, build_station_simulation):
     # create the PointCloudToPoseSystem
     if "sim.yml" in config_file:
         pc_to_pose_left = builder.AddSystem(PointCloudToPoseSystem(
@@ -263,19 +290,9 @@ def build_system(builder, config_file, viz):
             pc_to_pose_left.camera_configs["left_camera_serial"],
             pc_to_pose_left.camera_configs["middle_camera_serial"],
             pc_to_pose_left.camera_configs["right_camera_serial"]]
-        station = builder.AddSystem(
-            ManipulationStationHardwareInterface(camera_ids))
-        station.Connect()
+        station = build_station_real_world(builder, camera_ids)
     else:
-        station = builder.AddSystem(ManipulationStation())
-        station.AddCupboard()
-        object_file_path = \
-            "drake/examples/manipulation_station/models/061_foam_brick.sdf"
-        brick = AddModelFromSdfFile(
-            FindResourceOrThrow(object_file_path),
-            station.get_mutable_multibody_plant(),
-            station.get_mutable_scene_graph())
-        station.Finalize()
+        station, brick = build_station_simulation(builder)
 
     # add systems to convert the depth images from ManipulationStation to
     # PointClouds
@@ -322,7 +339,10 @@ def build_system(builder, config_file, viz):
         builder.Connect(right_dut.point_cloud_output_port(),
                         pc_to_pose.GetInputPort("right_point_cloud"))
 
-    return station, pc_to_pose_left, pc_to_pose_right, brick, use_hardware
+    if use_hardware:
+        return [use_hardware, station, pc_to_pose_left, pc_to_pose_right]
+    else:
+        return [use_hardware, station, pc_to_pose_left, pc_to_pose_right, brick]
 
 def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.0):
     """Estimates the pose of the foam brick in a ManipulationStation setup.
@@ -334,7 +354,11 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
     """
     builder = DiagramBuilder()
 
-    station, pc_to_pose_left, pc_to_pose_right, brick, use_hardware = build_system(builder, config_file, viz)
+    output = add_camera_system(builder, config_file, viz, build_station_real_world, build_station_simulation)
+    if output[0]:  # use_hardware is True
+        use_hardware, station, pc_to_pose_left, pc_to_pose_right = output
+    else:
+        use_hardware, station, pc_to_pose_left, pc_to_pose_right, brick = output
 
     diagram = builder.Build()
 
@@ -430,7 +454,7 @@ if __name__ == "__main__":
     if args.test:
         with open("angle_tests.csv", "w") as f:
             f.write("angle,left_estimate,right_estimate,left_error,right_error\n")
-            for angle in [i * np.pi/24 for i in range(25)]:
+            for angle in [i * np.pi/18 for i in range(10)]:
                 print "Testing angle", angle
                 left_door_pose, right_door_pose = GetDoorPose(args.config_file, args.viz,
                                                               left_door_angle=angle,

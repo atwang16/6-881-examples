@@ -7,6 +7,7 @@ from plan_runner.manipulation_station_simulator import ManipulationStationSimula
 from plan_runner.manipulation_station_plan_runner import *
 from plan_runner.open_left_door import (GenerateOpenLeftDoorPlansByTrajectory,
                                         GenerateOpenLeftDoorPlansByImpedanceOrPosition,)
+from perception.estimate_door_angle import GetDoorPose, get_door_angle
 
 if __name__ == '__main__':
     # python run_open_left_door.py --controller=Position --left_door_angle_actual 0.2 --left_door_angle_guess 0.2 --open_fully
@@ -25,24 +26,39 @@ if __name__ == '__main__':
         help="Specify the controller used to open the door. Its value should be: "
              "'Trajectory' (default), 'Impedance' or 'Position.")
     parser.add_argument(
-        "--left_door_angle_actual",
+        "--left_door_angle",
         type=float,
         help="Angle of left door, from 0 to pi/2",
         default=0.001)
     parser.add_argument(
-        "--right_door_angle_actual",
+        "--right_door_angle",
         type=float,
         help="Angle of right door, from 0 to pi/2",
         default=0.001)
     parser.add_argument(
-        "--left_door_angle_guess",
-        type=float,
-        help="Angle of left door, from 0 to pi/2",
-        default=0.0)
+        "--no_visualization", action="store_true", default=False,
+        help="Turns off visualization")
+    parser.add_argument(
+        "--diagram_plan_runner", action="store_true", default=False,
+        help="Use the diagram version of plan_runner")
+    parser.add_argument(
+        "--config_file",
+        required=True,
+        help="The path to a .yml camera config file")
     args = parser.parse_args()
     is_hardware = args.hardware
 
-    left_door_angle = -args.left_door_angle_guess
+    left_door_pose, right_door_pose = GetDoorPose(args.config_file,
+                                                  viz=not args.no_visualization,
+                                                  left_door_angle=args.left_door_angle,
+                                                  right_door_angle=args.right_door_angle)
+    estimated_left_door_angle = get_door_angle(left_door_pose)
+    estimated_right_door_angle = get_door_angle(right_door_pose)
+
+    print "Estimated left door angle: " + str(estimated_left_door_angle)
+    print "Estimated right door angle: " + str(estimated_right_door_angle)
+
+    left_door_angle = -estimated_left_door_angle
     rotation_matrix = np.array([[np.cos(left_door_angle), -np.sin(left_door_angle), 0], [np.sin(left_door_angle), np.cos(left_door_angle), 0], [0, 0, 1]])
     p_handle_2_hinge_new = np.dot(rotation_matrix, p_handle_2_hinge)
     p_LC_handle_new = p_handle_2_hinge_new + p_LC_left_hinge
@@ -68,10 +84,12 @@ if __name__ == '__main__':
         plan_list, gripper_setpoint_list = GenerateOpenLeftDoorPlansByImpedanceOrPosition(
             open_door_method=args.controller, is_open_fully=args.open_fully, handle_angle_start=theta0_hinge_new, handle_position=p_WC_handle_new)
 
+    print type(gripper_setpoint_list), gripper_setpoint_list
+
     # Run simulator (simulation or hardware).
     if is_hardware:
         iiwa_position_command_log, iiwa_position_measured_log, iiwa_external_torque_log = \
-            manip_station_sim.RunRealRobot(plan_list, gripper_setpoint_list)
+            manip_station_sim.RunRealRobot(plan_list, gripper_setpoint_list, is_plan_runner_diagram=args.diagram_plan_runner)
         PlotExternalTorqueLog(iiwa_external_torque_log)
         PlotIiwaPositionLog(iiwa_position_command_log, iiwa_position_measured_log)
     else:
@@ -79,6 +97,7 @@ if __name__ == '__main__':
         iiwa_position_command_log, iiwa_position_measured_log, iiwa_external_torque_log, \
             state_log = manip_station_sim.RunSimulation(
                 plan_list, gripper_setpoint_list, extra_time=2.0, real_time_rate=1.0, q0_kuka=q0,
-                left_door_angle=args.left_door_angle_actual, right_door_angle=args.right_door_angle_actual)
+                is_visualizing=not args.no_visualization, left_door_angle=args.left_door_angle, right_door_angle=args.right_door_angle,
+                is_plan_runner_diagram=args.diagram_plan_runner)
         PlotExternalTorqueLog(iiwa_external_torque_log)
         PlotIiwaPositionLog(iiwa_position_command_log, iiwa_position_measured_log)

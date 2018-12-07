@@ -16,7 +16,7 @@ from underactuated.meshcat_visualizer import MeshcatVisualizer
 from plan_runner.manipulation_station_plan_runner import ManipStationPlanRunner
 from plan_runner.manipulation_station_plan_runner_diagram import CreateManipStationPlanRunnerDiagram
 from plan_runner.plan_utils import *
-from perception import estimate_door_angle
+from perception.estimate_door_angle import *
 
 X_WObject_default = Isometry3.Identity()
 X_WObject_default.set_translation([.6, 0, 0])
@@ -26,7 +26,7 @@ class ManipulationStationSimulator:
     def __init__(self, time_step,
                  object_file_path=None,
                  object_base_link_name=None,
-                 X_WObject=X_WObject_default,):
+                 X_WObject=X_WObject_default):
         self.object_base_link_name = object_base_link_name
         self.time_step = time_step
 
@@ -48,9 +48,18 @@ class ManipulationStationSimulator:
         # Initial pose of the object
         self.X_WObject = X_WObject
 
+    @staticmethod
+    def build_station_real_world(builder, camera_ids):
+        station_hardware = ManipulationStationHardwareInterface(camera_ids)
+        station_hardware.Connect()
+        return station_hardware
+
+    def build_station_simulation(self, builder):
+        return self.station, self.object
+
     def RunSimulation(self, plan_list, gripper_setpoint_list,
                       extra_time=0, real_time_rate=1.0, q0_kuka=np.zeros(7), is_visualizing=True, sim_duration=None,
-                      is_plan_runner_diagram=False):
+                      is_plan_runner_diagram=False, left_door_angle=0.001, right_door_angle=0.001):
         """
         Constructs a Diagram that sends commands to ManipulationStation.
         @param plan_list: A list of Plans to be executed.
@@ -73,7 +82,7 @@ class ManipulationStationSimulator:
 
         # Add plan runner.
         if is_plan_runner_diagram:
-            plan_runner = CreateManipStationPlanRunnerDiagram(
+            plan_runner, duration_multiplier = CreateManipStationPlanRunnerDiagram(
                 station=self.station,
                 kuka_plans=plan_list,
                 gripper_setpoint_list=gripper_setpoint_list)
@@ -82,14 +91,16 @@ class ManipulationStationSimulator:
                 station=self.station,
                 kuka_plans=plan_list,
                 gripper_setpoint_list=gripper_setpoint_list)
+            duration_multiplier = plan_runner.kPlanDurationMultiplier
+
         self.plan_runner = plan_runner
 
         builder.AddSystem(plan_runner)
+
         builder.Connect(plan_runner.GetOutputPort("gripper_setpoint"),
                         self.station.GetInputPort("wsg_position"))
         builder.Connect(plan_runner.GetOutputPort("force_limit"),
                         self.station.GetInputPort("wsg_force_limit"))
-
 
         demux = builder.AddSystem(Demultiplexer(14, 7))
         builder.Connect(
@@ -108,8 +119,8 @@ class ManipulationStationSimulator:
         if is_visualizing:
             scene_graph = self.station.get_mutable_scene_graph()
             viz = MeshcatVisualizer(scene_graph,
-                                    is_drawing_contact_force = True,
-                                    plant = self.plant)
+                                    is_drawing_contact_force=True,
+                                    plant=self.plant)
             builder.AddSystem(viz)
             builder.Connect(self.station.GetOutputPort("pose_bundle"),
                             viz.GetInputPort("lcm_visualization"))
@@ -157,16 +168,16 @@ class ManipulationStationSimulator:
         # with small contact forces between the door and the cupboard body.
         left_hinge_joint = self.plant.GetJointByName("left_door_hinge")
         left_hinge_joint.set_angle(
-            context=self.station.GetMutableSubsystemContext(self.plant, context), angle=-0.001)
+            context=self.station.GetMutableSubsystemContext(self.plant, context), angle=-left_door_angle)
 
         right_hinge_joint = self.plant.GetJointByName("right_door_hinge")
         right_hinge_joint.set_angle(
-            context=self.station.GetMutableSubsystemContext(self.plant, context), angle=0.001)
+            context=self.station.GetMutableSubsystemContext(self.plant, context), angle=right_door_angle)
 
         # set initial pose of the object
         if self.object_base_link_name is not None:
             self.plant.tree().SetFreeBodyPoseOrThrow(
-               self.plant.GetBodyByName(self.object_base_link_name, self.object),
+                self.plant.GetBodyByName(self.object_base_link_name, self.object),
                 self.X_WObject, self.station.GetMutableSubsystemContext(self.plant, context))
 
         simulator.set_publish_every_time_step(False)
@@ -181,7 +192,8 @@ class ManipulationStationSimulator:
         simulator.StepTo(sim_duration)
 
         return iiwa_position_command_log, iiwa_position_measured_log, \
-            iiwa_external_torque_log, plant_state_log
+               iiwa_external_torque_log, plant_state_log
+
 
     def RunRealRobot(self, plan_list, gripper_setpoint_list, sim_duration=None, extra_time=2.0,
                      is_plan_runner_diagram=False,):
@@ -205,35 +217,37 @@ class ManipulationStationSimulator:
 
         # Add plan runner.
         if is_plan_runner_diagram:
-            plan_runner = CreateManipStationPlanRunnerDiagram(
+            plan_runner, duration_multiplier = CreateManipStationPlanRunnerDiagram(
                 station=self.station,
                 kuka_plans=plan_list,
                 gripper_setpoint_list=gripper_setpoint_list,
-                print_period=0,)
+                print_period=0, )
         else:
             plan_runner = ManipStationPlanRunner(
                 station=self.station,
                 kuka_plans=plan_list,
                 gripper_setpoint_list=gripper_setpoint_list,
-                print_period=0,)
+                print_period=0, )
+            duration_multiplier = plan_runner.kPlanDurationMultiplier
 
         builder.AddSystem(plan_runner)
+
         builder.Connect(plan_runner.GetOutputPort("gripper_setpoint"),
-                        station_hardware.GetInputPort("wsg_position"))
+                        self.station.GetInputPort("wsg_position"))
         builder.Connect(plan_runner.GetOutputPort("force_limit"),
-                        station_hardware.GetInputPort("wsg_force_limit"))
+                        self.station.GetInputPort("wsg_force_limit"))
 
         demux = builder.AddSystem(Demultiplexer(14, 7))
         builder.Connect(
             plan_runner.GetOutputPort("iiwa_position_and_torque_command"),
             demux.get_input_port(0))
         builder.Connect(demux.get_output_port(0),
-                        station_hardware.GetInputPort("iiwa_position"))
+                        self.station.GetInputPort("iiwa_position"))
         builder.Connect(demux.get_output_port(1),
-                        station_hardware.GetInputPort("iiwa_feedforward_torque"))
-        builder.Connect(station_hardware.GetOutputPort("iiwa_position_measured"),
+                        self.station.GetInputPort("iiwa_feedforward_torque"))
+        builder.Connect(self.station.GetOutputPort("iiwa_position_measured"),
                         plan_runner.GetInputPort("iiwa_position"))
-        builder.Connect(station_hardware.GetOutputPort("iiwa_velocity_estimated"),
+        builder.Connect(self.station.GetOutputPort("iiwa_velocity_estimated"),
                         plan_runner.GetInputPort("iiwa_velocity"))
 
         # Add logger
@@ -241,11 +255,11 @@ class ManipulationStationSimulator:
         iiwa_position_command_log._DeclarePeriodicPublish(0.005)
 
         iiwa_position_measured_log = LogOutput(
-            station_hardware.GetOutputPort("iiwa_position_measured"), builder)
+            self.station.GetOutputPort("iiwa_position_measured"), builder)
         iiwa_position_measured_log._DeclarePeriodicPublish(0.005)
 
         iiwa_external_torque_log = LogOutput(
-            station_hardware.GetOutputPort("iiwa_torque_external"), builder)
+            self.station.GetOutputPort("iiwa_torque_external"), builder)
         iiwa_external_torque_log._DeclarePeriodicPublish(0.005)
 
         # build diagram
