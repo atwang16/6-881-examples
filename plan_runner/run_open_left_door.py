@@ -21,7 +21,7 @@ if __name__ == '__main__':
         "--open_fully", action='store_true',
         help="Add additional plans to fully open the door after impedance/position plans.")
     parser.add_argument(
-        "-c", "--controller", type=str, default="Trajectory",
+        "-c", "--controller", type=str, default="Impedance",
         choices=["Trajectory", "Impedance", "Position"],
         help="Specify the controller used to open the door. Its value should be: "
              "'Trajectory' (default), 'Impedance' or 'Position.")
