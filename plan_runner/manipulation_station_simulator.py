@@ -186,7 +186,7 @@ class ManipulationStationSimulator:
         # calculate starting time for all plans.
         t_plan = GetPlanStartingTimes(plan_list)
         if sim_duration is None:
-            sim_duration = t_plan[-1] + extra_time
+            sim_duration = t_plan[-1]*duration_multiplier + extra_time
         print "simulation duration", sim_duration
         simulator.Initialize()
         simulator.StepTo(sim_duration)
@@ -227,7 +227,7 @@ class ManipulationStationSimulator:
                 station=self.station,
                 kuka_plans=plan_list,
                 gripper_setpoint_list=gripper_setpoint_list,
-                print_period=0, )
+                print_period=0,)
             duration_multiplier = plan_runner.kPlanDurationMultiplier
 
         builder.AddSystem(plan_runner)
@@ -275,7 +275,7 @@ class ManipulationStationSimulator:
 
         t_plan = GetPlanStartingTimes(plan_list)
         if sim_duration is None:
-            sim_duration = t_plan[-1] + extra_time
+            sim_duration = t_plan[-1]*duration_multiplier + extra_time
 
         print "sending trajectories in 2 seconds..."
         time.sleep(1.0)
