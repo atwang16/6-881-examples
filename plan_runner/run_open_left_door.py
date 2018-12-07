@@ -10,7 +10,7 @@ from plan_runner.open_left_door import (GenerateOpenLeftDoorPlansByTrajectory,
 from perception.estimate_door_angle import GetDoorPose, get_door_angle
 
 if __name__ == '__main__':
-    # python run_open_left_door.py --controller=Position --left_door_angle_actual 0.2 --left_door_angle_guess 0.2 --open_fully
+    # python run_open_left_door.py --controller=Impedance --no_visualization --hardware --diagram_plan_runner --config_file ../perception/config/station_1.yml
     # define command line arguments
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
