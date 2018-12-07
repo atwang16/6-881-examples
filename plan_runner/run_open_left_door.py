@@ -45,15 +45,21 @@ if __name__ == '__main__':
         "--config_file",
         required=True,
         help="The path to a .yml camera config file")
+    parser.add_argument(
+        "--num_trials",
+        type=int,
+        help="set number of point cloud trials to run",
+        default=1)
     args = parser.parse_args()
     is_hardware = args.hardware
 
-    left_door_pose, right_door_pose = GetDoorPose(args.config_file,
-                                                  viz=not args.no_visualization,
-                                                  left_door_angle=args.left_door_angle,
-                                                  right_door_angle=args.right_door_angle)
-    estimated_left_door_angle = get_door_angle(left_door_pose)
-    estimated_right_door_angle = get_door_angle(right_door_pose)
+    isometries = GetDoorPose(args.config_file,
+                             viz=not args.no_visualization,
+                             left_door_angle=args.left_door_angle,
+                             right_door_angle=args.right_door_angle,
+                             num_trials=args.num_trials)
+    estimated_left_door_angle = sum(get_door_angle(left_door_pose) for left_door_pose in isometries["left_door"]) / args.num_trials
+    estimated_right_door_angle = sum(get_door_angle(right_door_pose) for right_door_pose in isometries["right_door"]) / args.num_trials
 
     print "Estimated left door angle: " + str(estimated_left_door_angle)
     print "Estimated right door angle: " + str(estimated_right_door_angle)

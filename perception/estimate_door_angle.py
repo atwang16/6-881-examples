@@ -155,13 +155,13 @@ def SegmentDoorRealWorld(scene_points, scene_colors, which_door="left", center=F
     left_table_colors = scene_colors[left_indices, :]
 
     # get only red points of door
-    r_min = 0.4
+    r_min = 0.6
     r_max = 1
 
-    g_min = 0.4
+    g_min = 0.6
     g_max = 1
 
-    b_min = 0.4
+    b_min = 0.6
     b_max = 1
 
     r_indices = ThresholdArray(left_table_colors[:, 0], r_min, r_max)
@@ -344,7 +344,7 @@ def add_camera_system(builder, config_file, viz, build_station_real_world, build
     else:
         return [use_hardware, station, pc_to_pose_left, pc_to_pose_right, brick]
 
-def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.0):
+def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.0, num_trials=1):
     """Estimates the pose of the foam brick in a ManipulationStation setup.
 
     @param config_file str. The path to a camera configuration file.
@@ -392,8 +392,13 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
     right_context = diagram.GetMutableSubsystemContext(pc_to_pose_right, simulator.get_mutable_context())
 
     # returns the pose of the brick, of type Isometry3
-    return pc_to_pose_left.GetOutputPort("X_WObject").Eval(left_context), \
-           pc_to_pose_right.GetOutputPort("X_WObject").Eval(right_context)
+    isometries = {"left_door": [], "right_door": []}
+
+    for _ in range(num_trials):
+        isometries["left_door"].append(pc_to_pose_left.GetOutputPort("X_WObject").Eval(left_context))
+        isometries["right_door"].append(pc_to_pose_right.GetOutputPort("X_WObject").Eval(right_context))
+
+    return isometries
     # return pc_to_pose_right.GetOutputPort("X_WObject").Eval(right_context)
 
 
@@ -449,6 +454,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Test a range of angles",
         default=0.0)
+    parser.add_argument(
+        "--num_trials",
+        type=int,
+        help="set number of point cloud trials to run",
+        default=1)
     args = parser.parse_args()
 
     if args.test:
@@ -466,13 +476,18 @@ if __name__ == "__main__":
                 f.write(str(angle) + "," + str(estimated_left_door_angle) + "," + str(estimated_right_door_angle) +
                         "," + str(left_error) + "," + str(right_error) + "\n")
     else:
-        left_door_pose, right_door_pose = GetDoorPose(args.config_file, args.viz,
-                                                      left_door_angle=args.left_door_angle,
-                                                      right_door_angle=args.right_door_angle)
+        isometries = GetDoorPose(args.config_file, args.viz,
+                                 left_door_angle=args.left_door_angle,
+                                 right_door_angle=args.right_door_angle,
+                                 num_trials=args.num_trials)
+        left_door_pose, right_door_pose = isometries["left_door"][0], isometries["right_door"][0]
         print "Left door pose:\n" + str(left_door_pose)
         print "Right door pose:\n" + str(right_door_pose)
-        estimated_left_door_angle = get_door_angle(left_door_pose)
-        estimated_right_door_angle = get_door_angle(right_door_pose)
+        print([get_door_angle(left_door_pose) for left_door_pose in isometries["left_door"]])
+        estimated_left_door_angle = sum(
+            get_door_angle(left_door_pose) for left_door_pose in isometries["left_door"]) / args.num_trials
+        estimated_right_door_angle = sum(
+            get_door_angle(right_door_pose) for right_door_pose in isometries["right_door"]) / args.num_trials
         print "Estimated left door angle: " + str(estimated_left_door_angle)
         print "Estimated right door angle: " + str(estimated_right_door_angle)
         print "Left Door Error (simulation): " + str(compute_error(args.left_door_angle, estimated_left_door_angle))
