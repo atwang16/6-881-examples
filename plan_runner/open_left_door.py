@@ -177,7 +177,7 @@ def GenerateApproachHandlePlans(InterpolateOrientation, is_printing=True, handle
     for q_traj in q_traj_list:
         plan_list.append(JointSpacePlan(q_traj))
 
-    gripper_setpoint_list = [0.02, 0.005] # robot
+    gripper_setpoint_list = [0.0475, 0.015] # robot
 
     # initial guess for the next IK
     q_final_full = q_knots_full[-1]
@@ -268,7 +268,7 @@ def AddOpenDoorFullyPlans(plan_list, gripper_setpoint_list):
 
 
 # global variables used for all door-opening plans.
-handle_angle_end = np.pi/180*50
+handle_angle_end = np.pi/180*55
 open_door_duration = 10.
 
 def GenerateOpenLeftDoorPlansByTrajectory(is_printing=True):

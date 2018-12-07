@@ -233,21 +233,21 @@ class ManipulationStationSimulator:
         builder.AddSystem(plan_runner)
 
         builder.Connect(plan_runner.GetOutputPort("gripper_setpoint"),
-                        self.station.GetInputPort("wsg_position"))
+                        station_hardware.GetInputPort("wsg_position"))
         builder.Connect(plan_runner.GetOutputPort("force_limit"),
-                        self.station.GetInputPort("wsg_force_limit"))
+                        station_hardware.GetInputPort("wsg_force_limit"))
 
         demux = builder.AddSystem(Demultiplexer(14, 7))
         builder.Connect(
             plan_runner.GetOutputPort("iiwa_position_and_torque_command"),
             demux.get_input_port(0))
         builder.Connect(demux.get_output_port(0),
-                        self.station.GetInputPort("iiwa_position"))
+                        station_hardware.GetInputPort("iiwa_position"))
         builder.Connect(demux.get_output_port(1),
-                        self.station.GetInputPort("iiwa_feedforward_torque"))
-        builder.Connect(self.station.GetOutputPort("iiwa_position_measured"),
+                        station_hardware.GetInputPort("iiwa_feedforward_torque"))
+        builder.Connect(station_hardware.GetOutputPort("iiwa_position_measured"),
                         plan_runner.GetInputPort("iiwa_position"))
-        builder.Connect(self.station.GetOutputPort("iiwa_velocity_estimated"),
+        builder.Connect(station_hardware.GetOutputPort("iiwa_velocity_estimated"),
                         plan_runner.GetInputPort("iiwa_velocity"))
 
         # Add logger
@@ -255,11 +255,11 @@ class ManipulationStationSimulator:
         iiwa_position_command_log._DeclarePeriodicPublish(0.005)
 
         iiwa_position_measured_log = LogOutput(
-            self.station.GetOutputPort("iiwa_position_measured"), builder)
+            station_hardware.GetOutputPort("iiwa_position_measured"), builder)
         iiwa_position_measured_log._DeclarePeriodicPublish(0.005)
 
         iiwa_external_torque_log = LogOutput(
-            self.station.GetOutputPort("iiwa_torque_external"), builder)
+            station_hardware.GetOutputPort("iiwa_torque_external"), builder)
         iiwa_external_torque_log._DeclarePeriodicPublish(0.005)
 
         # build diagram
