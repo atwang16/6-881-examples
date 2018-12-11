@@ -66,7 +66,7 @@ def ClearVis(meshcat_vis):
     meshcat_vis['transformed_observations'].delete()
 
 
-def VisualizeTransform(meshcat_vis, points, transform):
+def VisualizeTransform(meshcat_vis, points, transform, name="transformed_observations"):
     """Visualizes the points transformed by transform in yellow.
 
     Args:
@@ -87,7 +87,7 @@ def VisualizeTransform(meshcat_vis, points, transform):
     transformed_points = transform.dot(homogenous_points.T)
 
     PlotMeshcatPointCloud(meshcat_vis,
-                          'transformed_observations',
+                          name,
                           transformed_points[:3, :].T,
                           yellow)
 

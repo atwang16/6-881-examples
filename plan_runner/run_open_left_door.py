@@ -59,7 +59,7 @@ if __name__ == '__main__':
                              right_door_angle=args.right_door_angle,
                              num_trials=args.num_trials)
     estimated_left_door_angle = sum(get_door_angle(left_door_pose) for left_door_pose in isometries["left_door"]) / args.num_trials
-    estimated_right_door_angle = sum(get_door_angle(right_door_pose) for right_door_pose in isometries["right_door"]) / args.num_trials
+    estimated_right_door_angle = sum(get_door_angle(right_door_pose, flip_sign=True) for right_door_pose in isometries["right_door"]) / args.num_trials
 
     print "Estimated left door angle: " + str(estimated_left_door_angle)
     print "Estimated right door angle: " + str(estimated_right_door_angle)

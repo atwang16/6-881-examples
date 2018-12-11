@@ -57,6 +57,12 @@ def SegmentDoorSimulation(scene_points, scene_colors, which_door="left", center=
     @return door_points An Mx3 numpy array of points in the door.
     @return door_colors An Mx3 numpy array of the colors of the door points.
     """
+    def get_color_indices(r_min=-0.1, r_max=1.1, g_min=-0.1, g_max=1.1, b_min=-0.1, b_max=1.1):
+        r_indices = ThresholdArray(table_colors[:, 0], r_min, r_max)
+        g_indices = ThresholdArray(table_colors[:, 1], g_min, g_max)
+        b_indices = ThresholdArray(table_colors[:, 2], b_min, b_max)
+
+        return reduce(np.intersect1d, (r_indices, g_indices, b_indices))
 
     x_min = 0.4
     x_max = 0.75
@@ -85,7 +91,7 @@ def SegmentDoorSimulation(scene_points, scene_colors, which_door="left", center=
     table_colors = scene_colors[left_indices, :]
 
     # get only red points of door
-    r_min = -1
+    r_min = 0.5
     r_max = 1
 
     g_min = -1
@@ -94,11 +100,9 @@ def SegmentDoorSimulation(scene_points, scene_colors, which_door="left", center=
     b_min = -1
     b_max = 0.25
 
-    r_indices = ThresholdArray(table_colors[:, 0], r_min, r_max)
-    g_indices = ThresholdArray(table_colors[:, 1], g_min, g_max)
-    b_indices = ThresholdArray(table_colors[:, 2], b_min, b_max)
-
-    indices = reduce(np.intersect1d, (r_indices, g_indices, b_indices))
+    indices = get_color_indices(r_min=0.5, r_max=1, g_max=0.25, b_max=0.25)
+    if len(indices) < 30000:
+        indices = get_color_indices(r_max=1, g_max=0.25, b_max=0.25)
 
     door_points = table_points[indices, :]
     door_colors = table_colors[indices, :]
@@ -154,7 +158,7 @@ def SegmentDoorRealWorld(scene_points, scene_colors, which_door="left", center=F
     left_table_points = scene_points[left_indices, :]
     left_table_colors = scene_colors[left_indices, :]
 
-    # get only red points of door
+    # get only white points of door
     r_min = 0.6
     r_max = 1
 
@@ -194,18 +198,18 @@ def ComputeLeftDoorPose(door_points, door_colors):
 
 def ComputeRightDoorPose(door_points, door_colors):
     transformation = ComputeDoorPose(door_points, door_colors, model_path="models/right_door_model.npy")
-    transformation[0, 1] *= -1
-    transformation[1, 0] *= -1
+    # transformation[0, 1] *= -1
+    # transformation[1, 0] *= -1
     return transformation
 
 
 def ComputeDoorPose(door_points, door_colors, model_path):
-    """Finds a good 4x4 pose of the brick from the segmented points.
+    """Finds a good 4x4 pose of the door from the segmented points.
 
-    @param door_points An Nx3 numpy array of brick points.
-    @param door_colors An Nx3 numpy array of corresponding brick colors.
+    @param door_points An Nx3 numpy array of door points.
+    @param door_colors An Nx3 numpy array of corresponding door colors.
 
-    @return X_MS A 4x4 numpy array of the best-fit brick pose.
+    @return X_MS A 4x4 numpy array of the best-fit door pose.
     """
     model_door = np.load(model_path)
 
@@ -233,13 +237,6 @@ def ComputeDoorPose(door_points, door_colors, model_path):
 
     return X_MS
 
-    # reg = LinearRegression().fit(door_points[:, :2], door_points[:, 2])
-    # print reg.coef_
-    # print reg.intercept_
-    #
-    # return np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-
-# def build_station(builder, )
 
 def build_full_system(config_file, viz, build_station_real_world, build_station_simulation):
     builder = DiagramBuilder()
@@ -258,8 +255,7 @@ def build_station_real_world(builder, camera_ids):
 def build_station_simulation(builder):
     station = builder.AddSystem(ManipulationStation())
     station.AddCupboard()
-    object_file_path = \
-        "drake/examples/manipulation_station/models/061_foam_brick.sdf"
+    object_file_path = "drake/examples/manipulation_station/models/061_foam_brick.sdf"
     brick = AddModelFromSdfFile(
         FindResourceOrThrow(object_file_path),
         station.get_mutable_multibody_plant(),
@@ -402,7 +398,7 @@ def GetDoorPose(config_file, viz=False, left_door_angle=0.0, right_door_angle=0.
     # return pc_to_pose_right.GetOutputPort("X_WObject").Eval(right_context)
 
 
-def get_door_angle(door_pose):
+def get_door_angle(door_pose, flip_sign=False):
     sin_th = door_pose.rotation()[1, 0]
     cos_th = door_pose.rotation()[0, 0]
 
@@ -410,6 +406,8 @@ def get_door_angle(door_pose):
         theta = np.arccos(np.clip(cos_th, -1.0, 1.0))
     else:
         theta = -np.arccos(np.clip(cos_th, -1.0, 1.0))
+
+    theta *= 1 if not flip_sign else -1
 
     if theta < -np.pi / 4:
         theta += np.pi
@@ -462,15 +460,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.test:
-        with open("angle_tests.csv", "w") as f:
+        with open("angle_tests.csv", "a") as f:
             f.write("angle,left_estimate,right_estimate,left_error,right_error\n")
-            for angle in [i * np.pi/18 for i in range(10)]:
+            for angle in [i * np.pi/18 for i in range(5, 10)]:
                 print "Testing angle", angle
-                left_door_pose, right_door_pose = GetDoorPose(args.config_file, args.viz,
+                isometries = GetDoorPose(args.config_file, args.viz,
                                                               left_door_angle=angle,
                                                               right_door_angle=angle)
+                left_door_pose, right_door_pose = isometries["left_door"][0], isometries["right_door"][0]
                 estimated_left_door_angle = get_door_angle(left_door_pose)
-                estimated_right_door_angle = get_door_angle(right_door_pose)
+                estimated_right_door_angle = get_door_angle(right_door_pose, flip_sign=True)
                 left_error = compute_error(angle, estimated_left_door_angle)
                 right_error = compute_error(angle, estimated_right_door_angle)
                 f.write(str(angle) + "," + str(estimated_left_door_angle) + "," + str(estimated_right_door_angle) +
