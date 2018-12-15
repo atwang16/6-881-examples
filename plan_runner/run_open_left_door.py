@@ -88,7 +88,7 @@ if __name__ == '__main__':
         plan_list, gripper_setpoint_list = GenerateOpenLeftDoorPlansByTrajectory()
     elif args.controller == "Impedance" or args.controller == "Position":
         plan_list, gripper_setpoint_list = GenerateOpenLeftDoorPlansByImpedanceOrPosition(
-            open_door_method=args.controller, is_open_fully=args.open_fully, handle_angle_start=theta0_hinge_new, handle_position=p_WC_handle_new)
+            open_door_method=args.controller, is_open_fully=args.open_fully, handle_angle_start=theta0_hinge_new, handle_position=p_WC_handle_new, is_hardware=args.hardware)
 
     print type(gripper_setpoint_list), gripper_setpoint_list
 

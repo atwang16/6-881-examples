@@ -138,7 +138,7 @@ def GetHomeConfiguration(is_printing=True):
     return prog.GetSolution(ik_scene.q())
 
 
-def GenerateApproachHandlePlans(InterpolateOrientation, is_printing=True, handle_position=p_WC_handle):
+def GenerateApproachHandlePlans(InterpolateOrientation, is_printing=True, handle_position=p_WC_handle, is_hardware=False):
     """
     Returns a list of Plans that move the end effector from its home position to
     the left door handle. Also returns the corresponding gripper setpoints and IK solutions.
@@ -177,7 +177,7 @@ def GenerateApproachHandlePlans(InterpolateOrientation, is_printing=True, handle
     for q_traj in q_traj_list:
         plan_list.append(JointSpacePlan(q_traj))
 
-    gripper_setpoint_list = [0.0475, 0.015] # robot
+    gripper_setpoint_list = [0.0475 if is_hardware else 0.025, 0.015 if is_hardware else 0.002] # robot
 
     # initial guess for the next IK
     q_final_full = q_knots_full[-1]
@@ -299,7 +299,7 @@ def GenerateOpenLeftDoorPlansByTrajectory(is_printing=True):
     return plan_list, gripper_setpoint_list
 
 def GenerateOpenLeftDoorPlansByImpedanceOrPosition(
-        open_door_method="Impedance", is_open_fully=False, is_printing=True, handle_angle_start=0.0, handle_position=p_WC_handle):
+        open_door_method="Impedance", is_open_fully=False, is_printing=True, handle_angle_start=0.0, handle_position=p_WC_handle, is_hardware=False):
     """
     Creates iiwa plans and gripper set points that
     - starts at a home configuration,
@@ -317,7 +317,7 @@ def GenerateOpenLeftDoorPlansByImpedanceOrPosition(
     if handle_angle_start < handle_angle_end:
         # Move end effector towards the left door handle.
         plan_list, gripper_setpoint_list, q_final_full = \
-            GenerateApproachHandlePlans(ReturnConstantOrientation, is_printing=is_printing, handle_position=handle_position)
+            GenerateApproachHandlePlans(ReturnConstantOrientation, is_printing=is_printing, handle_position=handle_position, is_hardware=is_hardware)
 
         if open_door_method == "Impedance":
             # Add the position/impedance plan that opens the left door.

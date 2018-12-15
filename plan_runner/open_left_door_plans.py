@@ -159,7 +159,7 @@ class OpenLeftDoorImpedancePlan(OpenLeftDoorPlan):
             f_ee_desired = np.zeros(6)
 
             # translation
-            kp_translation = np.array([100., 1., 100]) *10 #*15
+            kp_translation = np.array([100., 1., 100]) * 10
             f_ee_desired[3:6] = -kp_translation * p_HrQ
 
             # rotation
